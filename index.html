@@ -2,30 +2,52 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Aurora Run: The Penguin's Journey</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Roboto:wght@400;700&display=swap');
 
-        body {
+        *, *::before, *::after {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
             margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
             overflow: hidden;
             background: #0a0a0a;
             font-family: 'Roboto', sans-serif;
+            touch-action: none;
+        }
+
+        body {
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
         }
 
         #game-wrapper {
             position: relative;
-            width: 800px;
-            height: 600px;
-            max-width: 100vw;
-            max-height: 100vh;
             background: linear-gradient(to bottom, #0a1628, #1a2f4b, #2c4560);
             box-shadow: 0 0 50px rgba(0, 234, 255, 0.3);
+            overflow: hidden;
+
+            /* Fills the viewport on mobile, fixed on desktop */
+            width: min(800px, 100vw);
+            height: min(600px, 100vh);
+
+            /* On truly small screens, fill entirely */
+        }
+
+        @media (max-width: 800px), (max-height: 600px) {
+            #game-wrapper {
+                width: 100vw;
+                height: 100vh;
+                box-shadow: none;
+            }
         }
 
         #game-container {
@@ -33,12 +55,17 @@
             height: 100%;
         }
 
+        #game-container canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* ── UI LAYER ───────────────────────────────────────── */
         #ui-layer {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             pointer-events: none;
             display: flex;
             flex-direction: column;
@@ -48,30 +75,30 @@
         .hud {
             display: flex;
             justify-content: space-between;
-            padding: 15px;
+            padding: clamp(8px, 2vw, 15px);
             color: white;
         }
 
         .score-box, .lives-box {
             font-family: 'Fredoka One', cursive;
-            font-size: 20px;
+            font-size: clamp(14px, 3vw, 20px);
             background: rgba(0, 20, 40, 0.8);
-            padding: 8px 16px;
+            padding: clamp(5px, 1.2vw, 8px) clamp(10px, 2.5vw, 16px);
             border-radius: 10px;
             border: 2px solid rgba(0, 234, 255, 0.4);
+            backdrop-filter: blur(4px);
         }
 
         .score-box span, .lives-box span {
             color: #ffeb3b;
-            font-size: 24px;
+            font-size: clamp(16px, 3.5vw, 24px);
         }
 
+        /* ── SCREENS ────────────────────────────────────────── */
         #menu-screen, #game-over-screen {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             background: rgba(0, 15, 30, 0.95);
             display: flex;
             flex-direction: column;
@@ -79,558 +106,578 @@
             justify-content: center;
             pointer-events: auto;
             z-index: 10;
+            padding: 20px;
         }
 
         h1 {
             font-family: 'Fredoka One', cursive;
-            font-size: 48px;
+            font-size: clamp(32px, 8vw, 48px);
             color: #00eaff;
             text-transform: uppercase;
-            margin: 0 0 15px 0;
+            margin: 0 0 10px 0;
             text-shadow: 0 0 20px #00eaff;
+            text-align: center;
         }
 
         p {
             color: #b0dce8;
-            font-size: 16px;
+            font-size: clamp(13px, 2.5vw, 16px);
             text-align: center;
             max-width: 400px;
             line-height: 1.4;
-            margin: 8px 0;
+            margin: 6px 0;
         }
 
         .btn {
             background: linear-gradient(45deg, #00c6ff, #0072ff);
             border: none;
-            padding: 12px 35px;
+            padding: clamp(10px, 2.5vw, 12px) clamp(24px, 6vw, 35px);
             color: white;
             font-family: 'Fredoka One', cursive;
-            font-size: 20px;
+            font-size: clamp(16px, 4vw, 20px);
             border-radius: 50px;
             cursor: pointer;
             box-shadow: 0 0 20px #0072ff;
             transition: transform 0.1s;
-            margin-top: 20px;
+            margin-top: clamp(14px, 3vw, 20px);
             text-transform: uppercase;
+            pointer-events: auto;
+            -webkit-appearance: none;
         }
 
-        .btn:hover {
-            transform: scale(1.05);
-        }
-
-        .btn:active {
-            transform: scale(0.95);
-        }
+        .btn:hover  { transform: scale(1.05); }
+        .btn:active { transform: scale(0.95); }
 
         .controls-hint {
-            margin-top: 15px;
-            font-size: 13px;
+            margin-top: 12px;
+            font-size: clamp(11px, 2.5vw, 13px);
             opacity: 0.7;
             color: white;
+            text-align: center;
         }
 
-        .hidden {
-            display: none !important;
-        }
+        .hidden { display: none !important; }
 
         #credits {
             position: absolute;
-            bottom: 8px;
+            bottom: clamp(50px, 12vw, 70px); /* sits above mobile controls */
             width: 100%;
             text-align: center;
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.5);
+            font-size: clamp(10px, 2vw, 12px);
+            color: rgba(255,255,255,0.5);
             z-index: 5;
+            pointer-events: none;
+        }
+
+        /* credits on desktop sit just above the bottom edge */
+        @media (min-width: 801px) and (min-height: 601px) {
+            #credits { bottom: 8px; }
         }
 
         #credits a {
             color: #00eaff;
             text-decoration: none;
+            pointer-events: auto;
+        }
+
+        /* ── MOBILE CONTROLS ────────────────────────────────── */
+        #mobile-controls {
+            position: absolute;
+            bottom: 0; left: 0;
+            width: 100%;
+            display: none;               /* shown only on touch devices via JS */
+            pointer-events: auto;
+            z-index: 20;
+            padding: 8px 12px 10px;
+            gap: 10px;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(to top, rgba(0,10,25,0.85), transparent);
+        }
+
+        .ctrl-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .ctrl-btn {
+            width: clamp(52px, 14vw, 68px);
+            height: clamp(52px, 14vw, 68px);
+            border-radius: 50%;
+            border: 2px solid rgba(0, 234, 255, 0.5);
+            background: rgba(0, 40, 80, 0.75);
+            backdrop-filter: blur(6px);
+            color: #00eaff;
+            font-size: clamp(20px, 5vw, 28px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: background 0.1s, transform 0.1s;
+            touch-action: manipulation;
+        }
+
+        .ctrl-btn:active {
+            background: rgba(0, 100, 180, 0.85);
+            transform: scale(0.92);
+        }
+
+        .ctrl-btn.jump-btn {
+            width: clamp(60px, 16vw, 78px);
+            height: clamp(60px, 16vw, 78px);
+            border-color: rgba(255, 235, 0, 0.6);
+            color: #ffeb3b;
+            font-size: clamp(22px, 6vw, 32px);
         }
     </style>
 </head>
 <body>
 
-    <div id="game-wrapper">
-        <div id="game-container"></div>
+<div id="game-wrapper">
+    <div id="game-container"></div>
 
-        <div id="ui-layer">
-            <div class="hud">
-                <div class="score-box">SCORE: <span id="score">0</span></div>
-                <div class="lives-box">LIVES: <span id="lives">3</span></div>
-            </div>
-            
-            <div id="credits">
-                w/luv<a href="https://sanidhyas.vercel.app" target="_blank">sanidhya</a>
-            </div>
+    <div id="ui-layer">
+        <div class="hud">
+            <div class="score-box">SCORE: <span id="score">0</span></div>
+            <div class="lives-box">LIVES: <span id="lives">3</span></div>
         </div>
 
-        <div id="menu-screen">
-            <h1>Aurora Run</h1>
-            <p>Dodge obstacles and collect coins!</p>
-            <button class="btn" onclick="startGame()">Start Run</button>
-            <div class="controls-hint">Arrow Keys to Move • Space to Jump</div>
-        </div>
-
-        <div id="game-over-screen" class="hidden">
-            <h1>Game Over!</h1>
-            <p>Final Score: <span id="final-score" style="color:#ffeb3b; font-weight:bold;">0</span></p>
-            <button class="btn" onclick="resetGame()">Try Again</button>
+        <div id="credits">
+            w/luv <a href="https://sanidhyas.vercel.app" target="_blank">sanidhya</a>
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- On-screen controls (mobile) -->
+    <div id="mobile-controls">
+        <div class="ctrl-group">
+            <div class="ctrl-btn" id="btn-left">◀</div>
+            <div class="ctrl-btn" id="btn-right">▶</div>
+        </div>
+        <div class="ctrl-group">
+            <div class="ctrl-btn jump-btn" id="btn-jump">▲</div>
+        </div>
+    </div>
 
-    <script>
-        // --- GAME VARIABLES ---
-        let scene, camera, renderer;
-        let penguin;
-        let gameActive = false;
-        let score = 0;
-        let lives = 3;
-        let gameSpeed = 0.3;
-        let frameId;
-        
-        // SIMPLE 3 LANE SYSTEM
-        const LANES = [-2, 0, 2]; // Left, Center, Right
-        let currentLaneIndex = 1; // Start in center
-        
-        let obstacles = [];
-        let coins = [];
-        
-        let isJumping = false;
-        let jumpVelocity = 0;
-        const GRAVITY = -0.02;
-        const JUMP_FORCE = 0.5;
-        
-        const scoreEl = document.getElementById('score');
-        const livesEl = document.getElementById('lives');
-        const finalScoreEl = document.getElementById('final-score');
-        const menuScreen = document.getElementById('menu-screen');
-        const gameOverScreen = document.getElementById('game-over-screen');
+    <div id="menu-screen">
+        <h1>Aurora Run</h1>
+        <p>Dodge obstacles and collect coins!</p>
+        <button class="btn" onclick="startGame()">Start Run</button>
+        <div class="controls-hint" id="controls-hint">Arrow Keys / WASD to Move • Space to Jump</div>
+    </div>
 
-        // Sound Effects
-        let jumpSound, coinSound, hitSound;
+    <div id="game-over-screen" class="hidden">
+        <h1>Game Over!</h1>
+        <p>Final Score: <span id="final-score" style="color:#ffeb3b; font-weight:bold;">0</span></p>
+        <button class="btn" onclick="resetGame()">Try Again</button>
+    </div>
+</div>
 
-        // --- INIT AUDIO ---
-        function initAudio() {
-            try {
-                jumpSound = new Tone.Synth({
-                    oscillator: { type: 'sine' },
-                    envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 }
-                }).toDestination();
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 
-                coinSound = new Tone.Synth({
-                    oscillator: { type: 'square' },
-                    envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.1 }
-                }).toDestination();
+<script>
+// ── GAME VARIABLES ──────────────────────────────────────────
+let scene, camera, renderer;
+let penguin;
+let gameActive = false;
+let score = 0;
+let lives = 3;
+let gameSpeed = 0.3;
+let frameId;
 
-                hitSound = new Tone.MembraneSynth({
-                    pitchDecay: 0.05,
-                    octaves: 4,
-                    envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 }
-                }).toDestination();
-            } catch(e) {
-                console.log('Audio init failed');
-            }
-        }
+const LANES = [-2, 0, 2];
+let currentLaneIndex = 1;
 
-        // --- INIT THREE.JS ---
-        function init() {
-            initAudio();
+let obstacles = [];
+let coins = [];
 
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x1a2f4b);
-            scene.fog = new THREE.Fog(0x1a2f4b, 10, 50);
+let isJumping = false;
+let jumpVelocity = 0;
+const GRAVITY    = -0.02;
+const JUMP_FORCE = 0.5;
 
-            // THIRD PERSON CAMERA - Behind and above penguin
-            camera = new THREE.PerspectiveCamera(60, 4/3, 0.1, 100);
-            camera.position.set(0, 4, 8);
-            camera.lookAt(0, 0, -10);
+const scoreEl      = document.getElementById('score');
+const livesEl      = document.getElementById('lives');
+const finalScoreEl = document.getElementById('final-score');
+const menuScreen    = document.getElementById('menu-screen');
+const gameOverScreen= document.getElementById('game-over-screen');
+const mobileControls= document.getElementById('mobile-controls');
+const controlsHint  = document.getElementById('controls-hint');
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(800, 600);
-            renderer.shadowMap.enabled = true;
-            document.getElementById('game-container').appendChild(renderer.domElement);
+let jumpSound, coinSound, hitSound;
 
-            // Lighting
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambientLight);
+// ── DETECT TOUCH ─────────────────────────────────────────────
+const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            dirLight.position.set(5, 10, 5);
-            dirLight.castShadow = true;
-            dirLight.shadow.camera.left = -10;
-            dirLight.shadow.camera.right = 10;
-            dirLight.shadow.camera.top = 10;
-            dirLight.shadow.camera.bottom = -10;
-            scene.add(dirLight);
+if (isTouchDevice) {
+    mobileControls.style.display = 'flex';
+    controlsHint.textContent = 'Use on-screen buttons to move & jump';
+}
 
-            createEnvironment();
-            createPenguin();
-            
-            renderer.render(scene, camera);
-        }
+// ── AUDIO ────────────────────────────────────────────────────
+function initAudio() {
+    try {
+        jumpSound = new Tone.Synth({
+            oscillator: { type: 'sine' },
+            envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 }
+        }).toDestination();
 
-        // --- ENVIRONMENT ---
-        function createEnvironment() {
-            // Ice path
-            const floorGeo = new THREE.PlaneGeometry(8, 100);
-            const floorMat = new THREE.MeshStandardMaterial({ 
-                color: 0x88bbdd,
-                roughness: 0.3,
-                metalness: 0.5
-            });
-            const floor = new THREE.Mesh(floorGeo, floorMat);
-            floor.rotation.x = -Math.PI / 2;
-            floor.position.z = -30;
-            floor.receiveShadow = true;
-            scene.add(floor);
+        coinSound = new Tone.Synth({
+            oscillator: { type: 'square' },
+            envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.1 }
+        }).toDestination();
 
-            // Lane divider lines
-            const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 });
-            
-            // Left divider
-            const leftLine = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 100), lineMat);
-            leftLine.rotation.x = -Math.PI / 2;
-            leftLine.position.set(-1, 0.01, -30);
-            scene.add(leftLine);
-            
-            // Right divider
-            const rightLine = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 100), lineMat);
-            rightLine.rotation.x = -Math.PI / 2;
-            rightLine.position.set(1, 0.01, -30);
-            scene.add(rightLine);
-        }
+        hitSound = new Tone.MembraneSynth({
+            pitchDecay: 0.05, octaves: 4,
+            envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 }
+        }).toDestination();
+    } catch(e) { console.log('Audio init failed', e); }
+}
 
-        // --- PENGUIN ---
-        function createPenguin() {
-            penguin = new THREE.Group();
+// ── THREE.JS INIT ─────────────────────────────────────────────
+function init() {
+    initAudio();
 
-            // Body
-            const bodyGeo = new THREE.SphereGeometry(0.4, 16, 16);
-            bodyGeo.scale(1, 1.2, 0.9);
-            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a });
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
-            body.position.y = 0.5;
-            body.castShadow = true;
-            penguin.add(body);
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a2f4b);
+    scene.fog = new THREE.Fog(0x1a2f4b, 10, 50);
 
-            // Belly
-            const bellyGeo = new THREE.SphereGeometry(0.32, 16, 16);
-            bellyGeo.scale(1, 1.1, 0.8);
-            const bellyMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-            const belly = new THREE.Mesh(bellyGeo, bellyMat);
-            belly.position.set(0, 0.5, 0.15);
-            penguin.add(belly);
+    camera = new THREE.PerspectiveCamera(60, 4/3, 0.1, 100);
+    camera.position.set(0, 4, 8);
+    camera.lookAt(0, 0, -10);
 
-            // Head
-            const headGeo = new THREE.SphereGeometry(0.3, 16, 16);
-            const head = new THREE.Mesh(headGeo, bodyMat);
-            head.position.y = 1;
-            head.castShadow = true;
-            penguin.add(head);
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    document.getElementById('game-container').appendChild(renderer.domElement);
 
-            // Eyes
-            const eyeGeo = new THREE.SphereGeometry(0.07, 8, 8);
-            const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-            
-            const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-            leftEye.position.set(-0.12, 1.05, 0.22);
-            penguin.add(leftEye);
-            
-            const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-            rightEye.position.set(0.12, 1.05, 0.22);
-            penguin.add(rightEye);
+    resizeRenderer();
+    window.addEventListener('resize', resizeRenderer);
 
-            // Pupils
-            const pupilGeo = new THREE.SphereGeometry(0.03, 8, 8);
-            const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-            
-            const leftPupil = new THREE.Mesh(pupilGeo, pupilMat);
-            leftPupil.position.set(-0.12, 1.05, 0.28);
-            penguin.add(leftPupil);
-            
-            const rightPupil = new THREE.Mesh(pupilGeo, pupilMat);
-            rightPupil.position.set(0.12, 1.05, 0.28);
-            penguin.add(rightPupil);
+    // Lighting
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 
-            // Beak
-            const beakGeo = new THREE.ConeGeometry(0.1, 0.2, 8);
-            const beakMat = new THREE.MeshStandardMaterial({ color: 0xff9900 });
-            const beak = new THREE.Mesh(beakGeo, beakMat);
-            beak.rotation.x = Math.PI / 2;
-            beak.position.set(0, 0.95, 0.38);
-            penguin.add(beak);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(5, 10, 5);
+    dirLight.castShadow = true;
+    dirLight.shadow.camera.left   = -10;
+    dirLight.shadow.camera.right  = 10;
+    dirLight.shadow.camera.top    = 10;
+    dirLight.shadow.camera.bottom = -10;
+    scene.add(dirLight);
 
-            // Feet
-            const footGeo = new THREE.SphereGeometry(0.12, 12, 12);
-            footGeo.scale(1.3, 0.4, 1.5);
-            const footMat = new THREE.MeshStandardMaterial({ color: 0xff9900 });
-            
-            const leftFoot = new THREE.Mesh(footGeo, footMat);
-            leftFoot.position.set(-0.2, 0.04, 0.1);
-            leftFoot.castShadow = true;
-            penguin.add(leftFoot);
-            
-            const rightFoot = new THREE.Mesh(footGeo, footMat);
-            rightFoot.position.set(0.2, 0.04, 0.1);
-            rightFoot.castShadow = true;
-            penguin.add(rightFoot);
+    createEnvironment();
+    createPenguin();
 
-            penguin.position.set(LANES[currentLaneIndex], 0, 0);
-            scene.add(penguin);
-        }
+    renderer.render(scene, camera);
+}
 
-        // --- SPAWN OBSTACLES & COINS ---
-        function spawnObstacle() {
-            const laneIndex = Math.floor(Math.random() * 3);
-            const xPos = LANES[laneIndex];
-            const zPos = -50;
+// ── RESPONSIVE RESIZE ─────────────────────────────────────────
+function resizeRenderer() {
+    const wrapper = document.getElementById('game-wrapper');
+    const w = wrapper.clientWidth;
+    const h = wrapper.clientHeight;
+    renderer.setSize(w, h, false); // false = don't set canvas style (CSS handles it)
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+}
 
-            if (Math.random() > 0.3) {
-                // Obstacle
-                const height = Math.random() > 0.5 ? 2 : 0.8;
-                const obsGeo = new THREE.BoxGeometry(1.2, height, 1);
-                const obsMat = new THREE.MeshStandardMaterial({ 
-                    color: height > 1 ? 0x4488cc : 0x88ccff,
-                    transparent: true,
-                    opacity: 0.9
-                });
-                
-                const obs = new THREE.Mesh(obsGeo, obsMat);
-                obs.position.set(xPos, height/2, zPos);
-                obs.castShadow = true;
-                obs.userData = { type: 'obstacle', lane: laneIndex, tall: height > 1 };
-                
-                scene.add(obs);
-                obstacles.push(obs);
-            } else {
-                // Coin
-                const coinGeo = new THREE.TorusGeometry(0.25, 0.1, 12, 16);
-                const coinMat = new THREE.MeshStandardMaterial({ 
-                    color: 0xffd700,
-                    emissive: 0xffaa00,
-                    emissiveIntensity: 0.6
-                });
-                const coin = new THREE.Mesh(coinGeo, coinMat);
-                coin.position.set(xPos, 0.8, zPos);
-                coin.userData = { type: 'coin', lane: laneIndex };
-                
-                scene.add(coin);
-                coins.push(coin);
-            }
-        }
+// ── ENVIRONMENT ───────────────────────────────────────────────
+function createEnvironment() {
+    const floorGeo = new THREE.PlaneGeometry(8, 100);
+    const floorMat = new THREE.MeshStandardMaterial({
+        color: 0x88bbdd, roughness: 0.3, metalness: 0.5
+    });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.z = -30;
+    floor.receiveShadow = true;
+    scene.add(floor);
 
-        // --- GAME LOGIC ---
-        function startGame() {
-            if (Tone.context.state !== 'running') {
-                Tone.start();
-            }
+    const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 });
 
-            menuScreen.classList.add('hidden');
-            gameOverScreen.classList.add('hidden');
-            
-            gameActive = true;
-            score = 0;
-            lives = 3;
-            gameSpeed = 0.3;
-            currentLaneIndex = 1;
+    const leftLine = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 100), lineMat);
+    leftLine.rotation.x = -Math.PI / 2;
+    leftLine.position.set(-1, 0.01, -30);
+    scene.add(leftLine);
+
+    const rightLine = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 100), lineMat);
+    rightLine.rotation.x = -Math.PI / 2;
+    rightLine.position.set(1, 0.01, -30);
+    scene.add(rightLine);
+}
+
+// ── PENGUIN ───────────────────────────────────────────────────
+function createPenguin() {
+    penguin = new THREE.Group();
+
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a });
+
+    const bodyGeo = new THREE.SphereGeometry(0.4, 16, 16);
+    bodyGeo.scale(1, 1.2, 0.9);
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 0.5;
+    body.castShadow = true;
+    penguin.add(body);
+
+    const bellyGeo = new THREE.SphereGeometry(0.32, 16, 16);
+    bellyGeo.scale(1, 1.1, 0.8);
+    const belly = new THREE.Mesh(bellyGeo, new THREE.MeshStandardMaterial({ color: 0xffffff }));
+    belly.position.set(0, 0.5, 0.15);
+    penguin.add(belly);
+
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), bodyMat);
+    head.position.y = 1;
+    head.castShadow = true;
+    penguin.add(head);
+
+    const eyeGeo  = new THREE.SphereGeometry(0.07, 8, 8);
+    const eyeMat  = new THREE.MeshStandardMaterial({ color: 0xffffff });
+    const pupilGeo= new THREE.SphereGeometry(0.03, 8, 8);
+    const pupilMat= new THREE.MeshBasicMaterial({ color: 0x000000 });
+
+    [[-0.12, 0.22], [0.12, 0.22]].forEach(([x]) => {
+        const eye = new THREE.Mesh(eyeGeo, eyeMat);
+        eye.position.set(x, 1.05, 0.22);
+        penguin.add(eye);
+        const pupil = new THREE.Mesh(pupilGeo, pupilMat);
+        pupil.position.set(x, 1.05, 0.28);
+        penguin.add(pupil);
+    });
+
+    const beakMat = new THREE.MeshStandardMaterial({ color: 0xff9900 });
+    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.2, 8), beakMat);
+    beak.rotation.x = Math.PI / 2;
+    beak.position.set(0, 0.95, 0.38);
+    penguin.add(beak);
+
+    const footGeo = new THREE.SphereGeometry(0.12, 12, 12);
+    footGeo.scale(1.3, 0.4, 1.5);
+    [-0.2, 0.2].forEach(x => {
+        const foot = new THREE.Mesh(footGeo, beakMat);
+        foot.position.set(x, 0.04, 0.1);
+        foot.castShadow = true;
+        penguin.add(foot);
+    });
+
+    penguin.position.set(LANES[currentLaneIndex], 0, 0);
+    scene.add(penguin);
+}
+
+// ── SPAWN ─────────────────────────────────────────────────────
+function spawnObstacle() {
+    const laneIndex = Math.floor(Math.random() * 3);
+    const xPos = LANES[laneIndex];
+    const zPos = -50;
+
+    if (Math.random() > 0.3) {
+        const height = Math.random() > 0.5 ? 2 : 0.8;
+        const obs = new THREE.Mesh(
+            new THREE.BoxGeometry(1.2, height, 1),
+            new THREE.MeshStandardMaterial({
+                color: height > 1 ? 0x4488cc : 0x88ccff,
+                transparent: true, opacity: 0.9
+            })
+        );
+        obs.position.set(xPos, height/2, zPos);
+        obs.castShadow = true;
+        obs.userData = { type: 'obstacle', lane: laneIndex, tall: height > 1 };
+        scene.add(obs);
+        obstacles.push(obs);
+    } else {
+        const coin = new THREE.Mesh(
+            new THREE.TorusGeometry(0.25, 0.1, 12, 16),
+            new THREE.MeshStandardMaterial({
+                color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 0.6
+            })
+        );
+        coin.position.set(xPos, 0.8, zPos);
+        coin.userData = { type: 'coin', lane: laneIndex };
+        scene.add(coin);
+        coins.push(coin);
+    }
+}
+
+// ── GAME LOGIC ────────────────────────────────────────────────
+function startGame() {
+    if (Tone.context.state !== 'running') Tone.start();
+
+    menuScreen.classList.add('hidden');
+    gameOverScreen.classList.add('hidden');
+
+    gameActive = true;
+    score = 0;
+    lives = 3;
+    gameSpeed = 0.3;
+    currentLaneIndex = 1;
+    isJumping = false;
+    jumpVelocity = 0;
+
+    penguin.position.set(LANES[currentLaneIndex], 0, 0);
+    updateUI();
+
+    obstacles.forEach(o => scene.remove(o));
+    coins.forEach(c => scene.remove(c));
+    obstacles = [];
+    coins = [];
+
+    if (!frameId) animate();
+}
+
+function resetGame() { startGame(); }
+
+function updateUI() {
+    scoreEl.innerText  = Math.floor(score);
+    livesEl.innerText  = lives;
+}
+
+function gameOver() {
+    gameActive = false;
+    finalScoreEl.innerText = Math.floor(score);
+    gameOverScreen.classList.remove('hidden');
+}
+
+// ── ANIMATION LOOP ────────────────────────────────────────────
+function animate() {
+    frameId = requestAnimationFrame(animate);
+
+    if (!gameActive) { renderer.render(scene, camera); return; }
+
+    gameSpeed += 0.0005;
+    score     += 0.1;
+    updateUI();
+
+    if (Math.random() < 0.02) spawnObstacle();
+
+    // Lane movement
+    const targetX = LANES[currentLaneIndex];
+    penguin.position.x += (targetX - penguin.position.x) * 0.15;
+
+    // Running animation
+    if (!isJumping) {
+        penguin.position.y = Math.abs(Math.sin(Date.now() * 0.01)) * 0.1;
+        penguin.rotation.z = Math.sin(Date.now() * 0.01) * 0.05;
+    }
+
+    // Jump physics
+    if (isJumping) {
+        penguin.position.y += jumpVelocity;
+        jumpVelocity += GRAVITY;
+        if (penguin.position.y <= 0) {
+            penguin.position.y = 0;
             isJumping = false;
             jumpVelocity = 0;
-            
-            penguin.position.set(LANES[currentLaneIndex], 0, 0);
-            
-            updateUI();
-            
-            obstacles.forEach(o => scene.remove(o));
-            coins.forEach(c => scene.remove(c));
-            obstacles = [];
-            coins = [];
-
-            if (!frameId) animate();
         }
+    }
 
-        function resetGame() {
-            startGame();
-        }
+    // Obstacles
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obs = obstacles[i];
+        obs.position.z += gameSpeed;
+        obs.rotation.y += 0.02;
 
-        function updateUI() {
-            scoreEl.innerText = Math.floor(score);
-            livesEl.innerText = lives;
-        }
-
-        function gameOver() {
-            gameActive = false;
-            finalScoreEl.innerText = Math.floor(score);
-            gameOverScreen.classList.remove('hidden');
-        }
-
-        // --- ANIMATION LOOP ---
-        function animate() {
-            frameId = requestAnimationFrame(animate);
-
-            if (!gameActive) {
-                renderer.render(scene, camera);
-                return;
-            }
-
-            // Gradually increase speed
-            gameSpeed += 0.0005;
-            score += 0.1;
-            updateUI();
-
-            // Spawn obstacles
-            if (Math.random() < 0.02) {
-                spawnObstacle();
-            }
-
-            // Smooth lane movement
-            const targetX = LANES[currentLaneIndex];
-            penguin.position.x += (targetX - penguin.position.x) * 0.15;
-            
-            // Simple running animation
-            if (!isJumping) {
-                penguin.position.y = Math.abs(Math.sin(Date.now() * 0.01)) * 0.1;
-                penguin.rotation.z = Math.sin(Date.now() * 0.01) * 0.05;
-            }
-
-            // Jump physics
-            if (isJumping) {
-                penguin.position.y += jumpVelocity;
-                jumpVelocity += GRAVITY;
-
-                if (penguin.position.y <= 0) {
-                    penguin.position.y = 0;
-                    isJumping = false;
-                    jumpVelocity = 0;
+        if (obs.userData.lane === currentLaneIndex) {
+            if (obs.position.z > -1 && obs.position.z < 1.5) {
+                let hit = obs.userData.tall || penguin.position.y < 0.5;
+                if (hit && !obs.userData.hit) {
+                    obs.userData.hit = true;
+                    lives--;
+                    if (hitSound) hitSound.triggerAttackRelease('C2', '0.3');
+                    penguin.children[0].material.color.setHex(0xff0000);
+                    setTimeout(() => penguin.children[0].material.color.setHex(0x1a1a1a), 200);
+                    if (lives <= 0) { gameOver(); return; }
+                    updateUI();
                 }
             }
-
-            // Update obstacles
-            for (let i = obstacles.length - 1; i >= 0; i--) {
-                let obs = obstacles[i];
-                obs.position.z += gameSpeed;
-                obs.rotation.y += 0.02;
-
-                // Collision check - only in same lane
-                if (obs.userData.lane === currentLaneIndex) {
-                    if (obs.position.z > -1 && obs.position.z < 1.5) {
-                        // Check if penguin can jump over
-                        let hit = false;
-                        if (obs.userData.tall) {
-                            hit = true; // Can't jump tall obstacles
-                        } else if (penguin.position.y < 0.5) {
-                            hit = true; // Didn't jump high enough
-                        }
-
-                        if (hit && !obs.userData.hit) {
-                            obs.userData.hit = true;
-                            lives--;
-                            if (hitSound) hitSound.triggerAttackRelease('C2', '0.3');
-                            
-                            // Flash effect
-                            penguin.children[0].material.color.setHex(0xff0000);
-                            setTimeout(() => {
-                                penguin.children[0].material.color.setHex(0x1a1a1a);
-                            }, 200);
-
-                            if (lives <= 0) {
-                                gameOver();
-                                return;
-                            }
-                        }
-                    }
-                }
-
-                // Remove if passed
-                if (obs.position.z > 3) {
-                    scene.remove(obs);
-                    obstacles.splice(i, 1);
-                }
-            }
-
-            // Update coins
-            for (let i = coins.length - 1; i >= 0; i--) {
-                let coin = coins[i];
-                coin.position.z += gameSpeed;
-                coin.rotation.y += 0.1;
-
-                // Collect coin - only in same lane
-                if (coin.userData.lane === currentLaneIndex) {
-                    if (coin.position.z > -1 && coin.position.z < 1.5) {
-                        if (!coin.userData.collected) {
-                            coin.userData.collected = true;
-                            score += 50;
-                            if (coinSound) coinSound.triggerAttackRelease('E6', '0.15');
-                            scene.remove(coin);
-                            coins.splice(i, 1);
-                            continue;
-                        }
-                    }
-                }
-
-                if (coin.position.z > 3) {
-                    scene.remove(coin);
-                    coins.splice(i, 1);
-                }
-            }
-
-            renderer.render(scene, camera);
         }
 
-        // --- CONTROLS ---
-        function changeLane(direction) {
-            currentLaneIndex += direction;
-            if (currentLaneIndex < 0) currentLaneIndex = 0;
-            if (currentLaneIndex > 2) currentLaneIndex = 2;
-        }
+        if (obs.position.z > 3) { scene.remove(obs); obstacles.splice(i, 1); }
+    }
 
-        function jump() {
-            if (!isJumping) {
-                isJumping = true;
-                jumpVelocity = JUMP_FORCE;
-                if (jumpSound) jumpSound.triggerAttackRelease('C5', '0.1');
+    // Coins
+    for (let i = coins.length - 1; i >= 0; i--) {
+        const coin = coins[i];
+        coin.position.z += gameSpeed;
+        coin.rotation.y += 0.1;
+
+        if (coin.userData.lane === currentLaneIndex) {
+            if (coin.position.z > -1 && coin.position.z < 1.5 && !coin.userData.collected) {
+                coin.userData.collected = true;
+                score += 50;
+                if (coinSound) coinSound.triggerAttackRelease('E6', '0.15');
+                scene.remove(coin);
+                coins.splice(i, 1);
+                updateUI();
+                continue;
             }
         }
 
-        document.addEventListener('keydown', (e) => {
-            if (!gameActive) return;
-            
-            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
-                changeLane(-1);
-            } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-                changeLane(1);
-            } else if (e.key === 'ArrowUp' || e.key === ' ' || e.key === 'w' || e.key === 'W') {
-                jump();
-            }
-        });
+        if (coin.position.z > 3) { scene.remove(coin); coins.splice(i, 1); }
+    }
 
-        // Touch controls
-        let touchStartX = 0;
-        let touchStartY = 0;
+    renderer.render(scene, camera);
+}
 
-        document.addEventListener('touchstart', (e) => {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
-        });
+// ── CONTROLS ──────────────────────────────────────────────────
+function changeLane(dir) {
+    currentLaneIndex = Math.max(0, Math.min(2, currentLaneIndex + dir));
+}
 
-        document.addEventListener('touchend', (e) => {
-            if (!gameActive) return;
-            let dx = e.changedTouches[0].screenX - touchStartX;
-            let dy = e.changedTouches[0].screenY - touchStartY;
-            
-            if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30) {
-                if (dx > 0) changeLane(1);
-                else changeLane(-1);
-            } else if (Math.abs(dy) > 30 && dy < 0) {
-                jump();
-            }
-        });
+function jump() {
+    if (!isJumping) {
+        isJumping = true;
+        jumpVelocity = JUMP_FORCE;
+        if (jumpSound) jumpSound.triggerAttackRelease('C5', '0.1');
+    }
+}
 
-        // Initialize
-        init();
-    </script>
+// Keyboard
+document.addEventListener('keydown', (e) => {
+    if (!gameActive) return;
+    if      (e.key === 'ArrowLeft'  || e.key === 'a' || e.key === 'A') changeLane(-1);
+    else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') changeLane(1);
+    else if (e.key === 'ArrowUp'    || e.key === ' ' || e.key === 'w' || e.key === 'W') {
+        e.preventDefault();
+        jump();
+    }
+});
+
+// Mobile buttons — use pointerdown for instant response
+function bindCtrlBtn(id, fn) {
+    const el = document.getElementById(id);
+    el.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        if (gameActive) fn();
+    });
+}
+bindCtrlBtn('btn-left',  () => changeLane(-1));
+bindCtrlBtn('btn-right', () => changeLane(1));
+bindCtrlBtn('btn-jump',  jump);
+
+// Swipe fallback for phones that lack button precision
+let touchStartX = 0, touchStartY = 0;
+
+document.getElementById('game-container').addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+}, { passive: true });
+
+document.getElementById('game-container').addEventListener('touchend', (e) => {
+    if (!gameActive) return;
+    const dx = e.changedTouches[0].screenX - touchStartX;
+    const dy = e.changedTouches[0].screenY - touchStartY;
+
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30) {
+        dx > 0 ? changeLane(1) : changeLane(-1);
+    } else if (Math.abs(dy) > 30 && dy < 0) {
+        jump();
+    }
+}, { passive: true });
+
+// ── START ─────────────────────────────────────────────────────
+init();
+</script>
 </body>
 </html>
